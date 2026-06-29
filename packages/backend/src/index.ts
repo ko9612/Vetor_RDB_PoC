@@ -18,6 +18,18 @@ import { runRdb } from "./engines/rdbEngine.js";
 const app = express();
 app.use(express.json());
 
+// 요청 로깅 — 어떤 API가 들어왔고 어떤 상태코드로 응답했는지 (메서드 경로 → 상태 소요시간)
+// /api/health 는 연결 배지용 주기 폴링이라 로그에서 제외(노이즈 방지)
+app.use((req, res, next) => {
+  if (req.path === "/api/health") return next();
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    console.log(`${req.method} ${req.originalUrl} → ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
+
 const PORT = Number(process.env.PORT ?? 8080);
 
 // SolarClient 인스턴스 (API 키 없으면 null — 빌드/타입체크는 통과)

@@ -2,8 +2,7 @@
 // 근거: docs/화면_설계서.md §3~4, docs/프론트엔드_기능정의서.md §3
 
 import type { Hit, Engine } from "@scm/shared";
-import type { PanelState } from "../reducer.js";
-import styles from "./ResultPanel.module.css";
+import type { PanelState } from "../store.js";
 
 interface Props {
   kind: Engine;
@@ -16,16 +15,18 @@ export function ResultPanel({ kind, state, onRetry }: Props) {
   const isVector = kind === "vector";
 
   return (
-    <div className={styles.panel}>
+    <div className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
       {/* 패널 헤더 */}
       <div
-        className={`${styles.panelHeader} ${isVector ? styles.panelHeaderVector : styles.panelHeaderRdb}`}
+        className={`flex items-center gap-2 px-5 py-3.5 text-[0.9375rem] font-bold text-white ${
+          isVector ? "bg-teal-600" : "bg-amber-600"
+        }`}
       >
         <span>
-          {isVector ? "\uD83D\uDD0D 의미 검색 (벡터 DB)" : "\uD83D\uDCDD 키워드 검색 (RDB)"}
+          {isVector ? "🔍 의미 검색 (벡터 DB)" : "📝 키워드 검색 (RDB)"}
         </span>
-        <span className={styles.engineLabel}>
-          {isVector ? "Pinecone \u00B7 Solar Embedding" : "SQLite FTS5 \u00B7 bm25"}
+        <span className="text-[0.8125rem] font-normal opacity-[0.85]">
+          {isVector ? "Pinecone · Solar Embedding" : "SQLite FTS5 · bm25"}
         </span>
       </div>
 
@@ -38,7 +39,7 @@ export function ResultPanel({ kind, state, onRetry }: Props) {
       )}
 
       {/* 상태별 본문 */}
-      <div className={styles.body}>
+      <div className="flex-1 p-5">
         {state.status === "idle" && <IdleView />}
         {state.status === "loading" && <LoadingView />}
         {state.status === "success" && (
@@ -56,10 +57,15 @@ export function ResultPanel({ kind, state, onRetry }: Props) {
 /* ── 키워드 배지 바 ── */
 function KeywordBadges({ keywords }: { keywords: string[] }) {
   return (
-    <div className={styles.keywordsBar}>
+    <div className="flex flex-wrap items-center gap-1.5 bg-amber-100 px-5 py-2 text-[0.8125rem] text-amber-800">
       <span>추출 키워드:</span>
       {keywords.map((kw, i) => (
-        <span key={i} className={styles.keywordBadge}>{kw}</span>
+        <span
+          key={i}
+          className="inline-block rounded border border-amber-600 bg-white px-2 py-0.5 text-xs text-amber-600"
+        >
+          {kw}
+        </span>
       ))}
     </div>
   );
@@ -68,9 +74,9 @@ function KeywordBadges({ keywords }: { keywords: string[] }) {
 /* ── IDLE ── */
 function IdleView() {
   return (
-    <div className={styles.idleState}>
-      <div className={styles.idleIcon} aria-hidden="true">&#x1F50E;</div>
-      <div className={styles.idleText}>수주 내용을 입력하고 검색하세요</div>
+    <div className="px-5 py-15 text-center text-slate-400">
+      <div className="mb-3 text-[2.5rem]" aria-hidden="true">&#x1F50E;</div>
+      <div className="text-[0.9375rem]">수주 내용을 입력하고 검색하세요</div>
     </div>
   );
 }
@@ -78,12 +84,12 @@ function IdleView() {
 /* ── LOADING (스켈레톤) ── */
 function LoadingView() {
   return (
-    <div className={styles.skeleton}>
+    <div className="p-5">
       {[0, 1, 2].map((i) => (
-        <div key={i} className={styles.skeletonCard}>
-          <div className={`${styles.skeletonLine} ${styles.skeletonLineShort}`} />
-          <div className={`${styles.skeletonLine} ${styles.skeletonLineMedium}`} />
-          <div className={`${styles.skeletonLine} ${styles.skeletonLineFull}`} />
+        <div key={i} className="mb-3 rounded-lg border border-slate-200 p-4">
+          <div className="mb-2.5 h-3 w-3/5 animate-pulse rounded bg-slate-200" />
+          <div className="mb-2.5 h-3 w-4/5 animate-pulse rounded bg-slate-200" />
+          <div className="mb-2.5 h-3 w-full animate-pulse rounded bg-slate-200" />
         </div>
       ))}
     </div>
@@ -110,8 +116,14 @@ function SuccessView({
 
       {/* AI 대응 방안 */}
       {advice && (
-        <div className={`${styles.advicePane} ${isVector ? styles.adviceVector : styles.adviceRdb}`}>
-          <div className={styles.adviceTitle}>AI 대응 방안</div>
+        <div
+          className={`mt-5 whitespace-pre-wrap rounded-lg p-4 text-sm leading-[1.7] ${
+            isVector ? "border border-teal-200 bg-teal-50" : "border border-amber-200 bg-amber-50"
+          }`}
+        >
+          <div className="mb-2 flex items-center gap-1.5 text-[0.8125rem] font-bold">
+            AI 대응 방안
+          </div>
           {advice}
         </div>
       )}
@@ -133,47 +145,61 @@ function ResultCard({
   const pct = Math.round(hit.score * 100);
 
   return (
-    <div className={`${styles.card} ${isVector ? styles.cardVector : styles.cardRdb}`}>
+    <div
+      className={`relative mb-3 rounded-lg border border-slate-200 p-4 transition-all last:mb-0 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] ${
+        isVector ? "hover:border-teal-600" : "hover:border-amber-600"
+      }`}
+    >
       {/* 상단: 순위 + SO-ID + 고객사 */}
-      <div className={styles.cardTop}>
-        <span className={`${styles.rankBadge} ${isVector ? styles.rankVector : styles.rankRdb}`}>
+      <div className="mb-2 flex items-center gap-2.5">
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
+            isVector ? "bg-teal-600" : "bg-amber-600"
+          }`}
+        >
           #{rank}
         </span>
-        <span className={styles.soId}>{hit.id}</span>
-        <span className={styles.customer}>{hit.customer}</span>
+        <span className="text-[0.9375rem] font-bold">{hit.id}</span>
+        <span className="text-sm text-slate-500">{hit.customer}</span>
       </div>
 
       {/* 메타 정보 */}
-      <div className={styles.meta}>
-        <span className={styles.metaItem}>품목: {hit.item}</span>
-        <span className={styles.metaItem}>수량: {hit.quantity.toLocaleString()}</span>
-        <span className={styles.metaItem}>납기: {hit.deadline}</span>
+      <div className="mb-2 flex flex-wrap gap-3 text-[0.8125rem] text-slate-500">
+        <span className="flex items-center gap-1">품목: {hit.item}</span>
+        <span className="flex items-center gap-1">수량: {hit.quantity.toLocaleString()}</span>
+        <span className="flex items-center gap-1">납기: {hit.deadline}</span>
       </div>
 
       {/* 비고 */}
-      {hit.note && <div className={styles.note}>{hit.note}</div>}
+      {hit.note && <div className="mb-2.5 text-[0.8125rem] leading-normal text-slate-600">{hit.note}</div>}
 
       {/* 점수 바 */}
-      <div className={styles.scoreRow}>
-        <span className={styles.scoreLabel}>
+      <div className="mb-2 flex items-center gap-2.5">
+        <span className="min-w-10 text-xs text-slate-500">
           {isVector ? "유사도" : "BM25"}
         </span>
-        <div className={styles.scoreBarOuter}>
+        <div className="h-2 flex-1 overflow-hidden rounded bg-slate-200">
           <div
-            className={`${styles.scoreBarInner} ${isVector ? styles.barVector : styles.barRdb}`}
+            className={`h-full rounded transition-[width] duration-[400ms] ease-out ${
+              isVector ? "bg-teal-600" : "bg-amber-600"
+            }`}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className={styles.scoreValue}>{pct}%</span>
+        <span className="min-w-12 text-right text-[0.8125rem] font-bold">{pct}%</span>
       </div>
 
       {/* 근거 배지 */}
       {hit.evidence && hit.evidence.length > 0 && (
-        <div className={styles.evidenceRow}>
+        <div className="flex flex-wrap gap-1.5">
           {hit.evidence.map((ev, i) => (
             <span
               key={i}
-              className={`${styles.evidenceBadge} ${isVector ? styles.evidenceVector : styles.evidenceRdb}`}
+              className={`inline-block rounded px-2 py-0.5 text-xs ${
+                isVector
+                  ? "border border-teal-200 bg-teal-100 text-teal-600"
+                  : "border border-amber-200 bg-amber-100 text-amber-600"
+              }`}
             >
               {ev}
             </span>
@@ -187,11 +213,11 @@ function ResultCard({
 /* ── EMPTY ── */
 function EmptyView({ reason }: { reason: string }) {
   return (
-    <div className={styles.emptyState}>
-      <div className={styles.emptyIcon} aria-hidden="true">&#x26A0;&#xFE0F;</div>
-      <div className={styles.emptyTitle}>검색 결과 없음</div>
-      <div className={styles.emptyReason}>{reason}</div>
-      <div className={styles.emptyAdvice}>근거 부족으로 추천 생략</div>
+    <div className="px-5 py-10 text-center text-slate-500">
+      <div className="mb-3 text-[2.5rem]" aria-hidden="true">&#x26A0;&#xFE0F;</div>
+      <div className="mb-2 text-base font-semibold text-slate-800">검색 결과 없음</div>
+      <div className="text-sm text-slate-500">{reason}</div>
+      <div className="mt-4 text-[0.8125rem] italic text-slate-400">근거 부족으로 추천 생략</div>
     </div>
   );
 }
@@ -205,12 +231,15 @@ function ErrorView({
   onRetry?: () => void;
 }) {
   return (
-    <div className={styles.errorState}>
-      <div className={styles.errorIcon} aria-hidden="true">&#x26D4;</div>
+    <div className="px-5 py-10 text-center text-red-800">
+      <div className="mb-3 text-[2.5rem]" aria-hidden="true">&#x26D4;</div>
       <div>일시적 오류가 발생했습니다</div>
-      <div className={styles.errorMessage}>{message}</div>
+      <div className="mb-4 text-sm">{message}</div>
       {onRetry && (
-        <button className={styles.retryBtn} onClick={onRetry}>
+        <button
+          className="rounded-lg border border-slate-200 bg-white px-5 py-2 text-sm text-slate-800 transition-colors hover:bg-slate-100"
+          onClick={onRetry}
+        >
           다시 시도
         </button>
       )}

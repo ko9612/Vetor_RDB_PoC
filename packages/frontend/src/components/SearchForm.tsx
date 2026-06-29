@@ -4,7 +4,6 @@
 import { useState } from "react";
 import { SCENARIOS } from "@scm/shared";
 import type { Scenario } from "@scm/shared";
-import styles from "./SearchForm.module.css";
 
 interface Props {
   loading: boolean;
@@ -29,13 +28,13 @@ export function SearchForm({ loading, onSearch }: Props) {
   };
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
-      <label className={styles.label} htmlFor="query-input">
+    <form className="mb-7" onSubmit={handleSubmit}>
+      <label className="mb-2 block text-[0.9375rem] font-semibold" htmlFor="query-input">
         새 수주 내용
       </label>
       <textarea
         id="query-input"
-        className={styles.textarea}
+        className="min-h-20 w-full resize-y rounded-lg border border-slate-200 p-3 text-[0.9375rem] text-slate-800 transition-colors placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-[3px] focus:ring-teal-600/15"
         placeholder="수주 내용을 입력하세요 (예: 긴급 납기가 필요한 부품...)"
         value={query}
         onChange={(e) => {
@@ -45,27 +44,31 @@ export function SearchForm({ loading, onSearch }: Props) {
         disabled={loading}
       />
 
-      <div className={styles.actions}>
+      <div className="mt-3 flex items-center gap-3">
         <button
           type="submit"
-          className={styles.searchBtn}
+          className="rounded-lg bg-teal-600 px-6 py-2.5 text-[0.9375rem] font-semibold text-white transition-colors enabled:hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-[0.55]"
           disabled={!canSubmit}
         >
           {loading ? "검색 중..." : "검색하기"}
         </button>
         {!query.trim() && (
-          <span className={styles.helper}>수주 내용을 입력하세요</span>
+          <span className="text-[0.8125rem] text-slate-500">수주 내용을 입력하세요</span>
         )}
       </div>
 
       {/* 시나리오 칩 */}
-      <div className={styles.chipsWrap}>
-        <span className={styles.chipsLabel}>빠른 시나리오:</span>
+      <div className="mt-4">
+        <span className="mr-2 text-[0.8125rem] text-slate-500">빠른 시나리오:</span>
         {SCENARIOS.map((s) => (
           <button
             key={s.id}
             type="button"
-            className={`${styles.chip} ${activeChip === s.id ? styles.chipActive : ""}`}
+            className={`my-1 mr-1 inline-block rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-all disabled:cursor-not-allowed disabled:opacity-[0.55] ${
+              activeChip === s.id
+                ? "border-teal-600 bg-teal-600 text-white hover:bg-teal-700"
+                : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-100"
+            }`}
             onClick={() => handleChipClick(s)}
             disabled={loading}
           >

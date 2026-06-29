@@ -1,17 +1,9 @@
-/* 전역 리셋 */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+@import "tailwindcss";
 
-body {
-  font-family: Pretendard, "Malgun Gothic", sans-serif;
-  color: #1e293b;
-  background: #f8fafc;
-  -webkit-font-smoothing: antialiased;
-}
-
-button {
-  font-family: inherit;
+/* 전역 베이스 — 폰트/배경. 나머지 스타일은 전부 유틸리티 클래스로 처리한다. */
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+    font-family: Pretendard, "Malgun Gothic", sans-serif;
+  }
 }
