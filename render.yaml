@@ -1,0 +1,22 @@
+# Render Blueprint — 한 서버(웹 서비스)가 프론트 화면 + API 동시 제공
+# 대시보드에서 "New +" → "Blueprint" 로 이 파일을 가리키면 자동 구성됨.
+# 비밀키 3개(sync:false)는 Render 대시보드에서 직접 입력해야 함.
+services:
+  - type: web
+    name: scm-similar-order-search
+    runtime: node
+    plan: free
+    # 프론트 빌드(dist 생성) → 백엔드가 이 dist 를 서빙
+    buildCommand: npm install && npm run build -w frontend
+    # 백엔드 실행(tsx). PORT 는 Render 가 자동 주입 → index.ts 가 그대로 사용
+    startCommand: npm run start -w backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: UPSTAGE_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX
+        sync: false

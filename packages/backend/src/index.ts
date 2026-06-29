@@ -1,6 +1,7 @@
 // Express API 엔트리 — 담당: backend-agent | 근거: docs/API_명세서.md
 import dotenv from "dotenv";
 import path from "path";
+import fs from "node:fs";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -138,5 +139,26 @@ app.post("/api/seed", async (req, res) => {
     res.status(500).json({ error: { code: "INTERNAL", message: err instanceof Error ? err.message : String(err) } });
   }
 });
+
+// ---------- 정적 프론트엔드 서빙 (배포: 한 서버가 화면 + API 동시 제공) ----------
+// 개발 중엔 dist 가 없으므로(프론트는 Vite :5173) 자동으로 건너뜀.
+const FRONTEND_DIST = path.resolve(__dirname, "../../frontend/dist");
+if (fs.existsSync(FRONTEND_DIST)) {
+  app.use(express.static(FRONTEND_DIST));
+  // SPA 폴백 — /api 가 아닌 GET 요청은 화면(index.html)으로
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(FRONTEND_DIST, "index.html"));
+  });
+  console.log(`serving frontend from ${FRONTEND_DIST}`);
+}
+
+// 시작 시 SQLite 자동 시드 — 배포 디스크가 초기화돼도 20건 복구(멱등, API 키 불필요)
+try {
+  const inserted = seedSqlite();
+  console.log(`SQLite seeded: ${inserted} orders`);
+} catch (err) {
+  console.error("SQLite seed failed:", err);
+}
 
 app.listen(PORT, () => console.log(`backend listening on :${PORT}`));
