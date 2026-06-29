@@ -18,7 +18,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "S2",
     title: "콜드체인 / 저온 유통",
-    query: "온도가 오르면 상해서 차갑게 유지하며 운반해야 하는 수주",
+    query: "냉동·냉장 상태로 차갑게 운반해야 하는 수주",
     answer: ["SO-003", "SO-007", "SO-011", "SO-015"],
     rdbExpect: "partial",
     vectorExpect: "success",
