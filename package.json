@@ -1,0 +1,28 @@
+{
+  "name": "scm-similar-order-search",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SCM 영업 유사 수주 검색 — 벡터 DB(Pinecone) vs RDB(SQLite FTS) 비교 시스템",
+  "workspaces": [
+    "packages/shared",
+    "packages/backend",
+    "packages/frontend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "seed": "npm run seed -w backend"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@esbuild/win32-x64": "^0.28.1",
+    "napi-build-utils": "^2.0.0"
+  }
+}
