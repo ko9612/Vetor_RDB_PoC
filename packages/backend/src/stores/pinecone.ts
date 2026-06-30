@@ -1,17 +1,24 @@
-// PineconeStore — Pinecone 인덱스 생성/업서트/검색
-// 담당: db-agent | 근거: docs/Pinecone_인덱스설계서.md
+// ─────────────────────────────────────────────────────────────
+// stores/pinecone.ts — "의미 검색용 창고(벡터 DB) 관리"
+//
+// Pinecone은 "숫자 벡터"를 저장하고, 그와 가장 비슷한 벡터를 찾아주는 클라우드 DB다.
+// 이 파일은 3가지를 한다:
+//   1) ensureIndex   : 창고(인덱스)가 없으면 새로 만든다
+//   2) seedPinecone  : 과거 수주 20건을 임베딩해서 창고에 올린다 (seed 때 1회)
+//   3) searchVector  : 검색어 벡터와 가장 비슷한 수주 TOP-K를 찾는다 (검색할 때마다)
+// ─────────────────────────────────────────────────────────────
 
 import { Pinecone } from "@pinecone-database/pinecone";
 import { ORDERS, orderToText } from "@scm/shared";
 import type { Hit } from "@scm/shared";
 import type { SolarClient } from "../solarClient.js";
 
-// ── 상수 (Pinecone_인덱스설계서.md §2) ──
-const INDEX_NAME = process.env.PINECONE_INDEX ?? "scm-orders";
-const DIMENSION = 4096;
-const METRIC = "cosine";
-const CLOUD = "aws";
-const REGION = "us-east-1";
+// ── 창고 설정값 ──
+const INDEX_NAME = process.env.PINECONE_INDEX ?? "scm-orders"; // 창고(인덱스) 이름
+const DIMENSION = 4096;        // 벡터 1개의 숫자 개수 (Solar 임베딩이 4096개를 만듦)
+const METRIC = "cosine";       // 유사도 계산 방식(코사인) — 방향이 비슷할수록 높은 점수
+const CLOUD = "aws";           // 클라우드 제공사
+const REGION = "us-east-1";    // 지역
 
 /** 내부 헬퍼: Pinecone 클라이언트 싱글턴 */
 function getPinecone(): Pinecone {
@@ -61,9 +68,10 @@ export async function seedPinecone(solar: SolarClient): Promise<number> {
     metadata: Record<string, string | number>;
   }> = [];
 
+  // 수주 20건을 하나씩: 문장으로 만들고 → 숫자 벡터로 변환해 모은다
   for (const order of ORDERS) {
-    const text = orderToText(order);
-    const values = await solar.embed(text, "passage");
+    const text = orderToText(order);                    // 수주 → 자연어 문장
+    const values = await solar.embed(text, "passage");  // 문장 → 숫자 4096개
 
     records.push({
       id: order.id,
@@ -98,14 +106,16 @@ export async function searchVector(
   const pc = getPinecone();
   const index = pc.index(INDEX_NAME);
 
+  // 검색어 벡터(qVector)와 가장 비슷한 수주 topK개를 요청
   const result = await index.query({
     vector: qVector,
     topK,
-    includeMetadata: true,
+    includeMetadata: true, // 고객사/품목 등 부가정보도 함께 받기
   });
 
   if (!result.matches) return [];
 
+  // Pinecone 응답을 화면이 쓰는 Hit 모양으로 변환 (score = 유사도)
   return result.matches.map((m) => {
     const meta = m.metadata as Record<string, string | number> | undefined;
     return {

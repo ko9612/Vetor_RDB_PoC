@@ -1,5 +1,14 @@
-// SqliteStore — SQLite + FTS5(bm25) 적재/검색
-// 담당: db-agent | 근거: docs/DB_설계서.md
+// ─────────────────────────────────────────────────────────────
+// stores/sqlite.ts — "키워드 검색용 창고(SQLite) 관리"
+//
+// SQLite는 서버 안에 든 작은 파일 DB(별도 DB 서버 아님).
+// FTS5 = SQLite의 "전문검색(full-text search)" 기능으로, 단어가 든 행을 빠르게 찾는다.
+// 이 파일은 3가지를 한다:
+//   1) getDb         : DB 파일을 열고 테이블을 준비한다(없으면 생성)
+//   2) seedSqlite    : 과거 수주 20건을 넣는다 (서버 시작/seed 때, 중복은 무시)
+//   3) searchFts     : 검색어에서 단어를 뽑아 그 단어가 든 수주를 찾는다 (검색할 때마다)
+//      + extractKeywords : 검색어를 단어로 쪼개고 불용어를 거르는 보조 함수
+// ─────────────────────────────────────────────────────────────
 
 import Database from "better-sqlite3";
 import path from "node:path";
@@ -14,7 +23,7 @@ const PROJECT_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 const DATA_DIR = path.join(PROJECT_ROOT, "data");
 const DB_PATH = path.join(DATA_DIR, "orders.db");
 
-// ── 불용어 목록 (DB_설계서.md §5.3) ──
+// ── 불용어: 검색에 의미 없는 조사·흔한 말. 키워드에서 빼버린다 ──
 const STOP_WORDS = new Set([
   "은", "는", "이", "가", "을", "를", "의", "에", "에서",
   "로", "으로", "과", "와", "도", "만", "한", "다", "고",
@@ -37,7 +46,7 @@ function getDb(): Database.Database {
   // WAL 모드
   db.pragma("journal_mode = WAL");
 
-  // DDL — docs/DB_설계서.md §4
+  // DDL
   db.exec(`
     CREATE TABLE IF NOT EXISTS orders (
       id         TEXT PRIMARY KEY,
@@ -124,8 +133,9 @@ export function seedSqlite(): number {
 }
 
 /**
- * 키워드 추출 — docs/DB_설계서.md §5.3
- * ① 구두점 제거 → ② 공백 분리 → ③ 불용어 및 1글자 필터링 → ④ 키워드 배열
+ * 키워드 추출 — 검색어 문장을 "검색에 쓸 단어들"로 정리한다.
+ * 예) "긴급 납기가 필요한 부품이에요" → ["긴급","납기","필요한","부품이에요"]
+ * 처리: ① 특수문자 제거 → ② 공백으로 단어 분리 → ③ 1글자·불용어 제거
  */
 export function extractKeywords(query: string): string[] {
   // 구두점 제거 (유니코드 구두점 + 일반 특수문자)
@@ -139,19 +149,20 @@ export function extractKeywords(query: string): string[] {
 }
 
 /**
- * FTS5 bm25 검색 — docs/DB_설계서.md §5.2
- * bm25 점수를 0~1로 정규화 (최고점=1).
+ * 키워드 검색 본체 — 뽑은 단어가 든 수주를 FTS5로 찾고 점수순으로 돌려준다.
+ * bm25 = 검색 관련도 점수(원래는 음수). 화면 표시를 위해 0~1로 바꾼다(최고점=1).
  */
 export function searchFts(
   query: string,
   topK: number,
 ): { keywords: string[]; hits: Hit[] } {
   const keywords = extractKeywords(query);
+  // 쓸만한 단어가 하나도 없으면 검색할 게 없으므로 빈 결과
   if (keywords.length === 0) return { keywords: [], hits: [] };
 
   const d = getDb();
 
-  // MATCH 식: "kw1" OR "kw2" OR ...
+  // FTS5 검색식 만들기: 단어 중 하나라도 들어있으면 매칭 (예: "긴급" OR "납기")
   const matchExpr = keywords.map((kw) => `"${kw}"`).join(" OR ");
 
   const stmt = d.prepare(`
